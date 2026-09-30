@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="es" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SysAdmin Chill | Ubuntu & Nginx Proxy Manager</title>
+    
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Tailwind Configuration -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        chill: {
+                            900: '#0f0e17', // Deep dark background
+                            800: '#171421', // Lighter dark for cards
+                            purple: '#a78bfa', // Primary purple accent (violet-400)
+                            purpleHover: '#8b5cf6', // Hover purple (violet-500)
+                            glow: 'rgba(167, 139, 250, 0.15)',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f0e17; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #4c1d95; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #a78bfa; 
+        }
+
+        /* Syntax Highlighting overrides */
+        .keyword { color: #c084fc; } /* Purple-400 */
+        .string { color: #6ee7b7; }  /* Emerald-300 */
+        .comment { color: #64748b; font-style: italic; } /* Slate-500 */
+        .command { color: #38bdf8; } /* Sky-400 */
+        
+        /* Proportional reading text */
+        .prose p {
+            line-height: 1.75;
+            margin-bottom: 1.25em;
+        }
+        
+        /* Mobile menu transition */
+        #mobile-menu {
+            transition: max-height 0.3s ease-in-out, opacity 0.3s ease-in-out;
+            max-height: 0;
+            opacity: 0;
+            overflow: hidden;
+        }
+        #mobile-menu.open {
+            max-height: 300px; /* arbitrary height to fit items */
+            opacity: 1;
+        }
+    </style>
+</head>
+<body class="bg-chill-900 text-slate-300 font-sans antialiased selection:bg-chill-purple selection:text-white">
+
+    <nav class="fixed w-full z-50 top-0 bg-chill-900/80 backdrop-blur-md border-b border-chill-purple/20 shadow-[0_4px_30px_rgba(167,139,250,0.05)]">
+        <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16 items-center">
+                <!-- Logo -->
+                <div class="flex-shrink-0 flex items-center gap-2 cursor-pointer">
+                    <svg class="w-8 h-8 text-chill-purple" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01"></path>
+                    </svg>
+                    <span class="font-bold text-xl tracking-tight text-white">Sys<span class="text-chill-purple">Docs</span></span>
+                </div>
+
+                <!-- Desktop Menu -->
+                <div class="hidden md:flex items-center space-x-8">
+                    <a href="#" class="text-slate-300 hover:text-chill-purple transition-colors font-medium">Inicio</a>
+                    <a href="#" class="text-slate-300 hover:text-chill-purple transition-colors font-medium">Guías Linux</a>
+                    <a href="#" class="text-slate-300 hover:text-chill-purple transition-colors font-medium">Docker</a>
+                    <a href="#" class="bg-chill-purple/10 text-chill-purple border border-chill-purple/30 px-4 py-2 rounded-lg hover:bg-chill-purple hover:text-white transition-all font-medium">Sobre mí</a>
+                </div>
+
+                <!-- Mobile Menu Button -->
+                <div class="md:hidden flex items-center">
+                    <button id="mobile-menu-btn" class="text-slate-300 hover:text-white focus:outline-none p-2">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path id="menu-icon-path" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mobile Menu (Hidden by default) -->
+        <div id="mobile-menu" class="md:hidden bg-chill-800 border-b border-chill-purple/20">
+            <div class="px-2 pt-2 pb-4 space-y-1 sm:px-3">
+                <a href="#" class="block px-3 py-2 rounded-md text-base font-medium text-white bg-chill-purple/20">Inicio</a>
+                <a href="#" class="block px-3 py-2 rounded-md text-base font-medium text-slate-300 hover:text-white hover:bg-chill-800">Guías Linux</a>
+                <a href="#" class="block px-3 py-2 rounded-md text-base font-medium text-slate-300 hover:text-white hover:bg-chill-800">Docker</a>
+                <a href="#" class="block px-3 py-2 mt-4 text-center rounded-md text-base font-medium bg-chill-purple/10 text-chill-purple border border-chill-purple/30">Sobre mí</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="pt-28 pb-16 px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto">
+        <!-- Article Header -->
+        <header class="mb-10 text-center md:text-left">
+            <div class="flex items-center justify-center md:justify-start gap-3 mb-4">
+                <span class="px-3 py-1 text-xs font-semibold uppercase tracking-wider text-chill-purple bg-chill-purple/10 border border-chill-purple/20 rounded-full">SysAdmin</span>
+                <span class="px-3 py-1 text-xs font-semibold uppercase tracking-wider text-emerald-400 bg-emerald-400/10 border border-emerald-400/20 rounded-full">Docker</span>
+            </div>
+            <h1 class="text-3xl md:text-5xl font-bold text-white tracking-tight mb-4 leading-tight">
+                Desplegando Nginx Proxy Manager con Docker en Ubuntu Server
+            </h1>
+            <div class="flex items-center justify-center md:justify-start gap-4 text-sm text-slate-400">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-chill-purple to-fuchsia-500 p-0.5">
+                        <img src="https://placehold.co/100x100/171421/a78bfa?text=Dev" alt="Author" class="w-full h-full rounded-full object-cover">
+                    </div>
+                    <span>Escrito por <strong>Tu Nombre</strong></span>
+                </div>
+                <span>•</span>
+                <time datetime="2026-09-19">19 Sep, 2026</time>
+                <span>•</span>
+                <span>5 min de lectura</span>
+            </div>
+        </header>
+
+        <article class="prose prose-invert max-w-none text-slate-300 text-lg">
+            
+            <p>Gestionar múltiples servicios en un solo servidor de Linux puede volverse un caos si manejamos las configuraciones de Nginx a mano. Para hacer la vida más fácil (y más <em>chill</em>), utilizaremos <strong>Nginx Proxy Manager (NPM)</strong>, una interfaz gráfica hermosa que maneja nuestros proxys inversos y certificados SSL gratuitos mediante Let's Encrypt.</p>
+            
+            <h2 class="text-2xl font-bold text-white mt-10 mb-4 border-b border-chill-800 pb-2 flex items-center gap-2">
+                <span class="text-chill-purple">01.</span> Preparación del Servidor
+            </h2>
+            <p>Lo primero es asegurarnos de que nuestro servidor Ubuntu esté actualizado e instalar las dependencias necesarias. Accede a tu servidor vía SSH y ejecuta:</p>
+            
+            <!-- Code Block with Copy Button -->
+            <div class="relative group my-6">
+                <div class="absolute -inset-0.5 bg-gradient-to-r from-chill-purple to-fuchsia-600 rounded-lg blur opacity-20 group-hover:opacity-40 transition duration-1000 group-hover:duration-200"></div>
+                <div class="relative bg-chill-800 border border-slate-700/50 rounded-lg overflow-hidden">
+                    <div class="flex items-center justify-between px-4 py-2 bg-slate-900/50 border-b border-slate-700/50">
+                        <span class="text-xs text-slate-400 font-mono">bash</span>
+                        <button onclick="copyCode(this)" class="text-xs flex items-center gap-1 text-slate-400 hover:text-white transition-colors focus:outline-none">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                            <span>Copiar</span>
+                        </button>
+                    </div>
+                    <pre class="p-4 overflow-x-auto text-sm font-mono leading-relaxed"><code class="code-content"><span class="comment"># Actualizar la lista de paquetes y el sistema</span>
+<span class="command">sudo</span> <span class="keyword">apt</span> update <span class="keyword">&&</span> <span class="command">sudo</span> <span class="keyword">apt</span> upgrade -y
+
+<span class="comment"># Instalar Docker</span>
+<span class="command">sudo</span> <span class="keyword">apt</span> install docker.io docker-compose -y
+
+<span class="comment"># Habilitar Docker para que inicie con el sistema</span>
+<span class="command">sudo</span> <span class="keyword">systemctl</span> enable docker
+<span class="command">sudo</span> <span class="keyword">systemctl</span> start docker</code></pre>
+                </div>
+            </div>
+
+            <h2 class="text-2xl font-bold text-white mt-10 mb-4 border-b border-chill-800 pb-2 flex items-center gap-2">
+                <span class="text-chill-purple">02.</span> Estructura del Proyecto
+            </h2>
+            <p>Es una buena práctica mantener nuestros contenedores organizados. Vamos a crear un directorio específico para Nginx Proxy Manager y dentro de él, nuestro archivo <code>docker-compose.yml</code>.</p>
+
+            <div class="relative group my-6">
+                <div class="relative bg-chill-800 border border-slate-700/50 rounded-lg overflow-hidden">
+                     <div class="flex items-center justify-between px-4 py-2 bg-slate-900/50 border-b border-slate-700/50">
+                        <span class="text-xs text-slate-400 font-mono">bash</span>
+                        <button onclick="copyCode(this)" class="text-xs flex items-center gap-1 text-slate-400 hover:text-white transition-colors">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg> Copiar
+                        </button>
+                    </div>
+                    <pre class="p-4 overflow-x-auto text-sm font-mono leading-relaxed"><code class="code-content"><span class="command">mkdir</span> -p ~/docker/npm
+<span class="command">cd</span> ~/docker/npm
+<span class="command">nano</span> docker-compose.yml</code></pre>
+                </div>
+            </div>
+
+            <h2 class="text-2xl font-bold text-white mt-10 mb-4 border-b border-chill-800 pb-2 flex items-center gap-2">
+                <span class="text-chill-purple">03.</span> Configuración de Docker Compose
+            </h2>
+            <p>Pega la siguiente configuración en tu editor. Este archivo define el contenedor, los puertos que expondrá (80, 443 para tráfico web y 81 para el panel de administración), y los volúmenes para persistir la configuración.</p>
+
+            <div class="relative group my-6">
+                <div class="relative bg-chill-800 border border-slate-700/50 rounded-lg overflow-hidden">
+                    <div class="flex items-center justify-between px-4 py-2 bg-slate-900/50 border-b border-slate-700/50">
+                        <span class="text-xs text-slate-400 font-mono">docker-compose.yml</span>
+                        <button onclick="copyCode(this)" class="text-xs flex items-center gap-1 text-slate-400 hover:text-white transition-colors">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg> Copiar
+                        </button>
+                    </div>
+                    <pre class="p-4 overflow-x-auto text-sm font-mono leading-relaxed"><code class="code-content"><span class="keyword">version:</span> <span class="string">'3.8'</span>
+<span class="keyword">services:</span>
+  <span class="keyword">app:</span>
+    <span class="keyword">image:</span> <span class="string">'jc21/nginx-proxy-manager:latest'</span>
+    <span class="keyword">restart:</span> unless-stopped
+    <span class="keyword">ports:</span>
+      - <span class="string">'80:80'</span>     <span class="comment"># HTTP Trafico Publico</span>
+      - <span class="string">'81:81'</span>     <span class="comment"># Panel de Admin</span>
+      - <span class="string">'443:443'</span>   <span class="comment"># HTTPS Trafico Publico</span>
+    <span class="keyword">volumes:</span>
+      - ./data:/data
+      - ./letsencrypt:/etc/letsencrypt</code></pre>
+                </div>
+            </div>
+
+            <p>Guarda el archivo (en nano: <code>Ctrl+O</code>, <code>Enter</code>, <code>Ctrl+X</code>) y levanta el contenedor en segundo plano ejecutando:</p>
+
+            <div class="relative bg-chill-800 border border-slate-700/50 rounded-lg overflow-hidden my-4">
+                <pre class="p-4 overflow-x-auto text-sm font-mono leading-relaxed"><code class="code-content"><span class="command">sudo</span> docker-compose up -d</code></pre>
+            </div>
+
+            <h2 class="text-2xl font-bold text-white mt-10 mb-4 border-b border-chill-800 pb-2 flex items-center gap-2">
+                <span class="text-chill-purple">04.</span> Acceso inicial
+            </h2>
+            <p>¡Listo! Nginx Proxy Manager está corriendo. Abre tu navegador web y navega a la IP de tu servidor en el puerto 81: <code>http://TU_IP:81</code>.</p>
+            
+            <div class="bg-chill-purple/10 border-l-4 border-chill-purple p-4 rounded-r-lg my-6">
+                <h4 class="text-chill-purple font-bold mb-1 mt-0">Credenciales por defecto:</h4>
+                <ul class="list-none p-0 m-0 text-slate-300">
+                    <li><strong>Email:</strong> admin@example.com</li>
+                    <li><strong>Password:</strong> changeme</li>
+                </ul>
+            </div>
+            
+            <p>En el primer inicio de sesión, el sistema te pedirá que cambies estos datos por unos más seguros. A partir de aquí, puedes comenzar a mapear tus subdominios a tus contenedores locales usando la hermosa interfaz web.</p>
+
+        </article>
+
+
+            <!-- ========================================== -->
+            <!-- SECCIÓN DE LA TAREA: ACTIVIDAD UNIDAD UNO  -->
+            <!-- ========================================== -->
+            <h2 class="text-2xl font-bold text-white mt-16 mb-4 border-b border-chill-800 pb-2 flex items-center gap-2">
+                <span class="text-chill-purple">05.</span> Entregables - Actividad Unidad Uno
+            </h2>
+            
+            <div class="bg-rose-500/10 border-l-4 border-rose-500 p-4 rounded-r-lg my-6">
+                <h4 class="text-rose-400 font-bold mb-1 mt-0 flex items-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                    Nota sobre el correo institucional
+                </h4>
+                <p class="text-slate-300 text-sm m-0">
+                    Los siguientes archivos adjuntos se encuentran alojados en mi Google Drive personal debido a fallas técnicas comprobadas con el acceso al correo institucional que impiden su uso temporalmente.
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 my-6">
+                <!-- Tarjeta Excel -->
+                <a href="https://docs.google.com/spreadsheets/d/1EET5u2y49gn2d4LaMIMl46eXVjtKZAO1/edit?usp=sharing&ouid=105422487683855024248&rtpof=true&sd=true" target="_blank" class="flex items-center gap-4 p-4 bg-chill-800 border border-slate-700/50 rounded-lg hover:border-emerald-500/50 hover:bg-slate-800/80 transition-all group no-underline">
+                    <div class="w-12 h-12 flex-shrink-0 flex items-center justify-center bg-emerald-500/20 text-emerald-400 rounded-lg group-hover:scale-110 transition-transform">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                    </div>
+                    <div>
+                        <h4 class="text-white font-medium m-0">Modelo de Inventario</h4>
+                        <p class="text-xs text-slate-400 m-0 mt-1">Hoja de cálculo (.xlsx)</p>
+                    </div>
+                </a>
+
+                <!-- Tarjeta Word -->
+                <a href="https://docs.google.com/document/d/1f3SnikI3Ih_HXD5E2eNo_GPa2wnzoTDT/edit?usp=sharing&ouid=105422487683855024248&rtpof=true&sd=true" target="_blank" class="flex items-center gap-4 p-4 bg-chill-800 border border-slate-700/50 rounded-lg hover:border-blue-500/50 hover:bg-slate-800/80 transition-all group no-underline">
+                    <div class="w-12 h-12 flex-shrink-0 flex items-center justify-center bg-blue-500/20 text-blue-400 rounded-lg group-hover:scale-110 transition-transform">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                    </div>
+                    <div>
+                        <h4 class="text-white font-medium m-0">Documento Formatos</h4>
+                        <p class="text-xs text-slate-400 m-0 mt-1">Microsoft Word (.docx)</p>
+                    </div>
+                </a>
+            </div>
+            <!-- ========================================== -->
+
+
+
+    </main>
+
+    <footer class="border-t border-chill-purple/10 bg-chill-900 mt-12">
+        <div class="max-w-5xl mx-auto px-4 py-8 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-2">
+                <span class="text-slate-400 text-sm">© 2026 SysDocs./ Bryan Stiven Rodriguez / Hecho con código, café y</span>
+                <svg class="w-4 h-4 text-chill-purple" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clip-rule="evenodd"></path></svg>
+            </div>
+            <div class="flex gap-4">
+                <a href="#" class="text-slate-400 hover:text-chill-purple transition-colors">
+                    <span class="sr-only">GitHub</span>
+                    <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" clip-rule="evenodd"></path></svg>
+                </a>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Hamburger Menu Logic
+        const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+        const mobileMenu = document.getElementById('mobile-menu');
+        const menuIconPath = document.getElementById('menu-icon-path');
+
+        let isMenuOpen = false;
+
+        mobileMenuBtn.addEventListener('click', () => {
+            isMenuOpen = !isMenuOpen;
+            
+            if (isMenuOpen) {
+                mobileMenu.classList.add('open');
+                // Change to X icon
+                menuIconPath.setAttribute('d', 'M6 18L18 6M6 6l12 12');
+            } else {
+                mobileMenu.classList.remove('open');
+                // Change back to hamburger
+                menuIconPath.setAttribute('d', 'M4 6h16M4 12h16M4 18h16');
+            }
+        });
+
+        // Copy Code Functionality
+        function copyCode(button) {
+            // Find the closest pre/code block relative to the button
+            const container = button.closest('.relative');
+            const codeBlock = container.querySelector('.code-content');
+            
+            if (!codeBlock) return;
+
+            // Get plain text (strip out HTML tags used for styling)
+            const textToCopy = codeBlock.innerText;
+
+            // Copy to clipboard
+            navigator.clipboard.writeText(textToCopy).then(() => {
+                // Visual feedback
+                const originalHTML = button.innerHTML;
+                button.innerHTML = `<svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> <span class="text-emerald-400">¡Copiado!</span>`;
+                
+                setTimeout(() => {
+                    button.innerHTML = originalHTML;
+                }, 2000);
+            }).catch(err => {
+                console.error('Error al copiar el texto: ', err);
+                // Fallback for iframe environments if clipboard API is blocked
+                try {
+                    const textArea = document.createElement("textarea");
+                    textArea.value = textToCopy;
+                    document.body.appendChild(textArea);
+                    textArea.select();
+                    document.execCommand("copy");
+                    document.body.removeChild(textArea);
+                    
+                    const originalHTML = button.innerHTML;
+                    button.innerHTML = `<svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> <span class="text-emerald-400">¡Copiado!</span>`;
+                    setTimeout(() => { button.innerHTML = originalHTML; }, 2000);
+                } catch (fallbackErr) {
+                    alert('No se pudo copiar el código.');
+                }
+            });
+        }
+    </script>
+</body>
+</html>
